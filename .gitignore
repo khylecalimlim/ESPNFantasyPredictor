@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data (raw league/player exports - keep out of git, add manually as needed)
+/data/*
+!/data/.gitkeep
+
+# OS / editor
+.DS_Store
