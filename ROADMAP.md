@@ -15,6 +15,8 @@ and *watching* it score against real historical weeks — before trusting it on 
   v1 model in simulated drafts (rival agents, not a replacement).
 - **Extension goal**: connect to your actual ESPN account/league and have the agent make real
   draft-day picks for you.
+- **Extension goal**: generalize beyond Full PPR to support Half PPR and other common
+  scoring formats.
 - **Data access**: no league API access needed yet — historical data will be supplied
   manually or via API access added later, as needed per phase.
 - **Scope order**: draft simulator and weekly backtest scorer are built **in parallel**, since
@@ -95,3 +97,12 @@ and *watching* it score against real historical weeks — before trusting it on 
 - [ ] Read live draft-room state during your actual draft
 - [ ] Have the chosen agent recommend or auto-submit picks in real time
 - [ ] Add safety rails (confirm-before-pick mode vs. full auto-draft mode)
+
+## Step 9 (Extension): Support Multiple Scoring Formats
+- [ ] Generalize the scoring logic (currently Full PPR only) into a configurable scoring
+  rule set — Half PPR, Standard (no PPR), and other common league variants
+- [ ] Parameterize the projection model and backtest scorer to take a scoring format as
+  input rather than hardcoding Full PPR math
+- [ ] Re-validate projections/backtests across formats (a model trained only on Full PPR
+  data may rank players differently under Half PPR or Standard scoring)
+- [ ] Add a way to select scoring format in the eventual UI (Step 6)
