@@ -35,17 +35,18 @@ and *watching* it score against real historical weeks — before trusting it on 
 ---
 
 ## Step 1: Project Setup
-- [ ] Set up Python environment (venv or conda) and `requirements.txt`
-- [ ] Folder structure: `notebooks/`, `data/`, `src/` (shared code imported by notebooks)
-- [ ] Add `.gitignore` (data files, venv, notebook checkpoints, `__pycache__`)
+- [x] Set up Python environment (venv or conda) and `requirements.txt`
+- [x] Folder structure: `notebooks/`, `data/`, `src/` (shared code imported by notebooks)
+- [x] Add `.gitignore` (data files, venv, notebook checkpoints, `__pycache__`)
 - [ ] Confirm league scoring settings (Full PPR — confirm roster spots, bench size, any
   scoring tweaks) and starting data source (manual export vs. API)
 
 ## Step 2: Data Layer
-- [ ] Define the data schema: players, weekly stats, season totals, draft ADP, league
+- [x] Define the data schema: players, weekly stats, season totals, draft ADP, league
   roster/scoring rules
 - [ ] Load historical season(s) data (manual CSV/export to start)
-- [ ] Clean/normalize stats into a consistent player-week table
+- [x] Clean/normalize stats into a consistent player-week table (loader + normalize logic
+  built and verified against synthetic sample data — still needs real historical data)
 - [ ] (Later) Wire up `espn_api` or direct API calls once league access details are available
 - [ ] (Later) Add auth handling for private league access (SWID/espn_s2 cookies), if/when
   needed
