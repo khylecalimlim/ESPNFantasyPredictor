@@ -18,7 +18,14 @@ and *watching* it score against real historical weeks — before trusting it on 
 - **Extension goal**: generalize beyond Full PPR to support Half PPR and other common
   scoring formats.
 - **Data access**: no league API access needed yet — historical data will be supplied
-  manually or via API access added later, as needed per phase.
+  manually or via API access added later, as needed per phase. Decided (2026-07-13):
+  primary historical stats source is `nflreadpy` (nflverse) — free, no auth, no
+  manual export needed, data back to 1999. `espn_api` is used separately later
+  once the user gives league access, specifically to read the *real* league's
+  scoring settings/roster rules and draft history — a different job than bulk
+  historical stats. ADP (average draft position, needed for Step 4's opponent
+  draft logic) isn't in nflverse; recommended source is the Fantasy Football
+  Calculator API (free, historical ADP by year/format) when Step 4 needs it.
 - **Scope order**: draft simulator and weekly backtest scorer are built **in parallel**, since
   they share the same underlying projection model.
 
@@ -39,15 +46,22 @@ and *watching* it score against real historical weeks — before trusting it on 
 - [x] Folder structure: `notebooks/`, `data/`, `src/` (shared code imported by notebooks)
 - [x] Add `.gitignore` (data files, venv, notebook checkpoints, `__pycache__`)
 - [ ] Confirm league scoring settings (Full PPR — confirm roster spots, bench size, any
-  scoring tweaks) and starting data source (manual export vs. API)
+  scoring tweaks) and starting data source (manual export vs. API). Offense scoring in
+  `schema.py`'s `FULL_PPR_SCORING` is now verified against ESPN's own published defaults
+  (2026-07-13) and against real 2024 season data — still worth a final check against the
+  user's actual league via `espn_api` once wired up, since K/DST scoring in particular is
+  the category most often customized by commissioners.
 
 ## Step 2: Data Layer
 - [x] Define the data schema: players, weekly stats, season totals, draft ADP, league
   roster/scoring rules
-- [ ] Load historical season(s) data (manual CSV/export to start)
-- [x] Clean/normalize stats into a consistent player-week table (loader + normalize logic
-  built and verified against synthetic sample data — still needs real historical data)
-- [ ] (Later) Wire up `espn_api` or direct API calls once league access details are available
+- [x] Load historical season(s) data (`src/nflverse_loader.py`, via `nflreadpy` — real
+  2024 season loaded and validated, no manual export needed; add more seasons as needed)
+- [x] Clean/normalize stats into a consistent player-week table (verified against real
+  2024 season data — see `notebooks/01_data_layer.ipynb`)
+- [ ] (Later) Wire up `espn_api` once league access details (league ID, SWID/espn_s2 for
+  private leagues) are available — for the user's actual league settings/draft history,
+  not bulk historical stats (that's `nflverse_loader.py`'s job)
 - [ ] (Later) Add auth handling for private league access (SWID/espn_s2 cookies), if/when
   needed
 
