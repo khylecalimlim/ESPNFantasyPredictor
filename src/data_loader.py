@@ -40,10 +40,10 @@ def normalize_player_week(players_df: pd.DataFrame, weekly_df: pd.DataFrame) -> 
     players_df = validate_schema(players_df, PLAYERS_SCHEMA, "players")
     weekly_df = validate_schema(weekly_df, WEEKLY_STATS_SCHEMA, "weekly_stats")
 
-    merged = weekly_df.merge(players_df, on="player_id", how="left", validate="many_to_one")
+    merged = weekly_df.merge(players_df, on=["player_id", "season"], how="left", validate="many_to_one")
     if merged["name"].isna().any():
-        orphaned = merged.loc[merged["name"].isna(), "player_id"].unique()
-        raise ValueError(f"weekly_stats has player_id(s) not found in players: {sorted(orphaned)}")
+        orphaned = merged.loc[merged["name"].isna(), ["player_id", "season"]].drop_duplicates()
+        raise ValueError(f"weekly_stats has (player_id, season) not found in players: {orphaned.values.tolist()}")
 
     merged["fantasy_points"] = compute_fantasy_points(merged)
     return merged.sort_values(["season", "week", "player_id"]).reset_index(drop=True)

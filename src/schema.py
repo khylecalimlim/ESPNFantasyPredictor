@@ -9,13 +9,19 @@ nflverse loader (`nflverse_loader.py`), or the `espn_api` package later.
 int, since that's the join key the real historical data source (nflverse) uses.
 """
 
-# One row per player (season-independent identity/metadata).
+# One row per player per season. `team`/`bye_week` (and occasionally
+# `position`) are season-dependent — a player can be traded or change roles —
+# so this is *not* a season-independent identity table despite `player_id`/
+# `name` being stable; `season` is part of the row's identity, not metadata.
+# Corrected 2026-08-16: originally lacked `season` entirely, which happened to
+# work only because every caller so far had pulled a single season at a time.
 PLAYERS_SCHEMA = {
     "player_id": "object",
     "name": "object",
     "position": "object",  # QB, RB, WR, TE, K, DST
     "team": "object",  # NFL team abbreviation
     "bye_week": "int64",
+    "season": "int64",
 }
 
 # One row per player per week per season.

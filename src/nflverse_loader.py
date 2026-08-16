@@ -30,6 +30,14 @@ STAT_RENAMES = {
 }
 
 
+# The 2022 Week 17 Bills-Bengals game was suspended after Damar Hamlin's
+# on-field cardiac arrest and never replayed — nflverse's schedule has no row
+# for it at all, so the anti-join below sees a second "missing week" for both
+# teams alongside their real bye. A one-time historical event, not a general
+# pattern, so it's excluded by name rather than folded into the bye logic.
+_CANCELED_GAME_PHANTOM_BYES = {(2022, "BUF", 17), (2022, "CIN", 17)}
+
+
 def _derive_bye_weeks(schedules: pl.DataFrame) -> pl.DataFrame:
     """One row per team/season for the week number they didn't play.
 
@@ -48,11 +56,21 @@ def _derive_bye_weeks(schedules: pl.DataFrame) -> pl.DataFrame:
     teams = long.select("season", "team").unique()
     every_team_week = teams.join(all_weeks, on="season", how="inner")
     bye = every_team_week.join(long, on=["season", "team", "week"], how="anti")
-    return bye.rename({"week": "bye_week"})
+    bye = bye.rename({"week": "bye_week"})
+
+    phantom = pl.DataFrame(
+        list(_CANCELED_GAME_PHANTOM_BYES), schema=["season", "team", "bye_week"], orient="row"
+    )
+    return bye.join(phantom, on=["season", "team", "bye_week"], how="anti")
 
 
 def load_players(seasons: list[int]) -> pd.DataFrame:
     """PLAYERS_SCHEMA rows for every rostered player in the given seasons.
+
+    One row per player *per season* — `team`/`bye_week` are season-dependent
+    (trades, schedule changes), so `season` is part of the row's key, not
+    metadata to drop. `normalize_player_week` joins on `[player_id, season]`
+    to match.
 
     Deliberately not filtered to FANTASY_POSITIONS here (unlike
     `load_weekly_stats`): a roster's listed position (e.g. "LB") can differ
@@ -78,7 +96,6 @@ def load_players(seasons: list[int]) -> pd.DataFrame:
         )
         .unique(subset=["player_id", "season"], keep="first")
         .join(bye_weeks, on=["season", "team"], how="left")
-        .drop("season")
         .drop_nulls("player_id")
     )
     return players.to_pandas().astype(PLAYERS_SCHEMA)

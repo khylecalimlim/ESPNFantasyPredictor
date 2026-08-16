@@ -7,3 +7,4 @@ nflreadpy
 pyarrow
 espn_api
 python-dotenv
+lightgbm
