@@ -48,9 +48,20 @@ and *watching* it score against real historical weeks — before trusting it on 
 - [ ] Confirm league scoring settings (Full PPR — confirm roster spots, bench size, any
   scoring tweaks) and starting data source (manual export vs. API). Offense scoring in
   `schema.py`'s `FULL_PPR_SCORING` is now verified against ESPN's own published defaults
-  (2026-07-13) and against real 2024 season data — still worth a final check against the
-  user's actual league via `espn_api` once wired up, since K/DST scoring in particular is
-  the category most often customized by commissioners.
+  (2026-07-13) and against real 2024 season data.
+- [x] Confirmed against the user's actual league (2026-08-16): connected via `espn_api` to
+  league id `2091358422` ("Vicious Victories", 2025 season, the user's most recently
+  completed league) using cookies stored in a new gitignored `.env` (see `.env.example`,
+  `src/espn_league.py`). `FULL_PPR_SCORING` matched exactly — no changes. `KICKER_SCORING`
+  and `DST_SCORING` did not: real FG 50+ splits into 50-59/60+ tiers, missed PATs score 0
+  (not -1), all defensive TD types score a flat 6 (not the split 3/3/4 guessed from a
+  generic ESPN scoring list), points-allowed tiers use different (smaller) magnitudes, and
+  the league also scores a separate total-yards-allowed ladder that wasn't modeled before
+  at all. `LEAGUE_SETTINGS` bench size was also off (7, not 6) and missing an IR slot. All
+  fixed in `schema.py` — see that file's updated comments for exact values and the two
+  fields (`1PSF`, `FTD`) whose exact mechanic is still unclear from the API alone. A second
+  league id, `1024327784` (this year's, from an invite link), is also stored in `.env` for
+  whenever that league's own settings need checking later — not queried yet.
 
 ## Step 2: Data Layer
 - [x] Define the data schema: players, weekly stats, season totals, draft ADP, league
@@ -59,9 +70,8 @@ and *watching* it score against real historical weeks — before trusting it on 
   2024 season loaded and validated, no manual export needed; add more seasons as needed)
 - [x] Clean/normalize stats into a consistent player-week table (verified against real
   2024 season data — see `notebooks/01_data_layer.ipynb`)
-- [ ] (Later) Wire up `espn_api` once league access details (league ID, SWID/espn_s2 for
-  private leagues) are available — for the user's actual league settings/draft history,
-  not bulk historical stats (that's `nflverse_loader.py`'s job)
+- [x] Wire up `espn_api` for league settings (2026-08-16, see Step 1 above — `src/espn_league.py`
+  is the reusable connector). Draft *history* specifically not pulled yet, only settings.
 - [ ] (Later) Add auth handling for private league access (SWID/espn_s2 cookies), if/when
   needed
 

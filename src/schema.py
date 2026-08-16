@@ -54,10 +54,10 @@ DRAFT_ADP_SCHEMA = {
 
 # Full PPR scoring weights, keyed to the stat columns in WEEKLY_STATS_SCHEMA.
 # Confirmed (2026-07-13) against ESPN's own published default offensive scoring
-# (support.espn.com "Scoring Settings" / games.espn.com scoring master list) —
-# these are ESPN's actual defaults, not a generic approximation. Still worth a
-# final check against the user's real league (via espn_api, once league access
-# is wired up) in case the commissioner customized anything.
+# (support.espn.com "Scoring Settings" / games.espn.com scoring master list), and
+# re-confirmed (2026-08-16) against the user's real league (id 2091358422, "Vicious
+# Victories", 2025 season) via a live espn_api pull — every offensive value below
+# matches the real league exactly, so this one was already correct as a default.
 FULL_PPR_SCORING = {
     "pass_yds": 0.04,  # 1 pt per 25 yds
     "pass_td": 4.0,
@@ -72,55 +72,96 @@ FULL_PPR_SCORING = {
     "two_pt_conversions": 2.0,
 }
 
-# ESPN default kicker scoring. Confirmed 2026-07-13 against ESPN's own scoring
-# master list. Not yet wired into WEEKLY_STATS_SCHEMA/data_loader.py (kicker
-# stats are a different shape — FG makes by distance bucket, not yards/TDs) —
-# add a dedicated kicker table when Step 3+ needs to project K scoring.
+# Kicker scoring. Corrected 2026-08-16 against the user's real league (id
+# 2091358422, "Vicious Victories", 2025 season) via a live espn_api pull — the
+# generic "ESPN default" values from 2026-07-13 were wrong in two ways for this
+# league: (1) 50+ yard FGs aren't one flat tier, the league splits 50-59 from
+# 60+ with 60+ worth an extra point; (2) missed PATs cost nothing here (0, not
+# -1 — espn_api only returns non-zero scoring entries, and no "PAT missed"
+# entry was present). Not yet wired into WEEKLY_STATS_SCHEMA/data_loader.py
+# (kicker stats are a different shape — FG makes by distance bucket, not
+# yards/TDs) — add a dedicated kicker table when Step 3+ needs to project K
+# scoring.
 KICKER_SCORING = {
     "pat_made": 1.0,
-    "pat_missed": -1.0,
+    "pat_missed": 0.0,
     "fg_made_0_39": 3.0,
     "fg_made_40_49": 4.0,
-    "fg_made_50_plus": 5.0,
+    "fg_made_50_59": 5.0,
+    "fg_made_60_plus": 6.0,
     "fg_missed": -1.0,
 }
 
-# ESPN default team Defense/Special Teams scoring. Sources disagreed on the
-# exact points-allowed tiers and whether all defensive TDs are a flat 6 or
-# split by type (INT/fumble return vs. kick/punt return) — the values below
-# are ESPN's own scoring master list (games.espn.com), the most authoritative
-# source found, but this is the one scoring category most likely to have been
-# customized by a commissioner, so confirm against the real league before
-# relying on it. Also not yet wired into a schema — DST stats are team-level
-# (sacks, turnovers forced, points/yards allowed), not player-level, so this
-# needs its own table, not WEEKLY_STATS_SCHEMA.
+# Team Defense/Special Teams scoring. Corrected 2026-08-16 against the user's
+# real league (id 2091358422, "Vicious Victories", 2025 season) via a live
+# espn_api pull — this was the scoring category most likely to be customized
+# (per the original 2026-07-13 note), and it was: the real league scores every
+# defensive TD type (INT return, fumble return, kick/punt return, blocked-kick
+# return) as a flat 6, not the split 3/3/4 values guessed from a generic ESPN
+# scoring master list. The points-allowed tiers also use different (smaller)
+# magnitudes than the old defaults, and the real league scores a *second*,
+# separate tier ladder on total yards allowed that wasn't tracked here at all.
+# Two categories the live pull returned that aren't modeled below because
+# their exact mechanic is unclear from the API alone (not guessed/fabricated):
+# "1PSF" (1pt Safety, 1.0) alongside the flat "safety" (2.0) — possibly a
+# distinct bonus condition; "FTD" (Fumble Recovered for TD, 6.0) alongside
+# "fumble_return_td" (6.0) — possibly a distinct recovery-vs-return case. Both
+# worth asking the commissioner about, or re-deriving once real DST box scores
+# are available to see which field actually fires. Still not wired into a data
+# table — DST stats are team-level (sacks, turnovers forced, points/yards
+# allowed), not player-level, so this needs its own table, not
+# WEEKLY_STATS_SCHEMA.
 DST_SCORING = {
     "sack": 1.0,
     "interception": 2.0,
     "fumble_recovery": 2.0,
     "safety": 2.0,
     "blocked_kick": 2.0,  # blocked punt, FG, or PAT
-    "interception_return_td": 3.0,
-    "fumble_return_td": 3.0,
-    "kick_or_punt_return_td": 4.0,
-    # Points allowed -> fantasy points.
+    "interception_return_td": 6.0,
+    "fumble_return_td": 6.0,
+    "kickoff_return_td": 6.0,
+    "punt_return_td": 6.0,
+    "blocked_kick_return_td": 6.0,
+    "two_pt_return": 2.0,  # defensive/ST return of an opponent's failed 2pt try
+    # Points allowed -> fantasy points. Gaps (18-21, 22-27) are real: this
+    # league scores those tiers at 0, same convention as the yards-allowed
+    # ladder below.
     "points_allowed_tiers": {
-        0: 10,
-        (1, 6): 7,
-        (7, 13): 4,
+        0: 5,
+        (1, 6): 4,
+        (7, 13): 3,
         (14, 17): 1,
         (18, 21): 0,
-        (22, 27): -1,
-        (28, 34): -4,
-        (35, 45): -7,
-        46: -10,  # 46+
+        (22, 27): 0,
+        (28, 34): -1,
+        (35, 45): -3,
+        46: -5,  # 46+
+    },
+    # Total yards allowed -> fantasy points. Not present in the old generic
+    # defaults at all; this league scores it as its own ladder alongside
+    # points allowed. The 300-349 gap is real (unlisted by the API => 0).
+    "total_yards_allowed_tiers": {
+        (0, 99): 5,
+        (100, 199): 3,
+        (200, 299): 2,
+        (300, 349): 0,
+        (350, 399): -1,
+        (400, 449): -3,
+        (450, 499): -5,
+        (500, 549): -6,
+        550: -7,  # 550+
     },
 }
 
-# League roster/bench settings — placeholder pending confirmation with the user
-# (see ROADMAP.md Step 1). Roster shape (1 QB/2 RB/2 WR/1 TE/1 FLEX/1 K/1 DST,
-# 6 bench) is ESPN's standard default; scoring is Full PPR (KICKER_SCORING and
-# DST_SCORING aren't included here yet since neither has a data table to back it).
+# League roster/bench settings. Confirmed 2026-08-16 against the user's real
+# league (id 2091358422, "Vicious Victories", 2025 season) via a live espn_api
+# pull — the roster slot shape (1 QB/2 RB/2 WR/1 TE/1 FLEX/1 K/1 DST) matched
+# the prior placeholder, but bench size was wrong (7, not 6) and an IR slot
+# exists that wasn't modeled at all. 12 teams, 14-week regular season, 8-team
+# playoff bracket (not part of roster/scoring, but relevant to Step 4's draft
+# simulator and Step 5's backtest scorer later). Scoring is Full PPR
+# (KICKER_SCORING and DST_SCORING aren't included here yet since neither has a
+# data table to back it).
 LEAGUE_SETTINGS = {
     "roster_slots": {
         "QB": 1,
@@ -130,7 +171,11 @@ LEAGUE_SETTINGS = {
         "FLEX": 1,  # RB/WR/TE
         "K": 1,
         "DST": 1,
+        "IR": 1,
     },
-    "bench_size": 6,
+    "bench_size": 7,
+    "team_count": 12,
+    "reg_season_weeks": 14,
+    "playoff_team_count": 8,
     "scoring": FULL_PPR_SCORING,
 }
