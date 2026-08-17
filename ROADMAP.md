@@ -72,16 +72,30 @@ and *watching* it score against real historical weeks — before trusting it on 
   2024 season data — see `notebooks/01_data_layer.ipynb`)
 - [x] Wire up `espn_api` for league settings (2026-08-16, see Step 1 above — `src/espn_league.py`
   is the reusable connector). Draft *history* specifically not pulled yet, only settings.
-- [ ] (Later) Add auth handling for private league access (SWID/espn_s2 cookies), if/when
-  needed
+- [x] Add auth handling for private league access (SWID/espn_s2 cookies) — done as part of
+  the Step 1 espn_api wiring above, since the "public" league turned out to require them
+  anyway.
 
 ## Step 3: Projection Model (v1 Draft AI — supervised)
-- [ ] Feature engineering: prior-season stats, team context, age/experience, injury history,
-  schedule, etc.
-- [ ] Train a regression/gradient-boosting model to project weekly or season-long fantasy
-  points per player (Full PPR scoring)
-- [ ] Evaluate against held-out historical weeks (basic accuracy/error metrics)
-- [ ] Notebook: visualize projections vs. actuals for a sanity check
+- [x] Feature engineering (2026-08-16, `src/features.py`): trailing-3/5-game rolling
+  averages (causal, carry across season boundaries), season-to-date average (resets each
+  season), prior-season total/games/average (covers the early-season cold-start gap),
+  position/team as categorical. Deliberately dropped a planned "bye-week flag" — every row
+  already represents a played game, so it could never be True. Age/experience, injury
+  history, and opponent-matchup-strength are real gaps *not* covered this pass — no data
+  source wired up for them yet, noted as fast-follows rather than blocking v1.
+- [x] Train a model (2026-08-16, `src/projection_model.py`): weekly (not season-long)
+  fantasy points, LightGBM, scoped to QB/RB/WR/TE only (K's fantasy_points is a data gap
+  pretending to be a real zero — kicker FG/PAT stats aren't wired into
+  `WEEKLY_STATS_SCHEMA` yet; DB/DL/LB/P gadget-play rows are noise, ~54 rows total). Trained
+  2019-2022, early-stopped against a 2023 validation set, 2024 held out untouched until
+  final evaluation. A trailing-3-game-average baseline (with a prior-season/position-average
+  fallback chain) was built first as the bar to beat.
+- [x] Evaluate against held-out weeks (2026-08-16): on the untouched 2024 test set, LightGBM
+  beat the baseline at every position on both MAE and RMSE (MAE improvement: QB +3.65%, RB
+  +1.85%, WR +4.35%, TE +3.31%) — modest but consistent gains for a first-pass model.
+- [x] Notebook: visualize projections vs. actuals (2026-08-16, `notebooks/02_projection_model.ipynb`,
+  scatter plots per position against the actual=projected line).
 
 ## Step 4: Draft Simulator (parallel with Step 5)
 - [ ] Model opponent draft behavior (ADP-based or simple value-based picks) for the other
