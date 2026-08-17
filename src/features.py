@@ -8,6 +8,17 @@ that week's own stat line.
 import pandas as pd
 
 TRAILING_WINDOWS = (3, 5)
+CATEGORICAL_FEATURES = ["position", "team"]
+
+FEATURE_COLUMNS = [
+    "trailing_3g_avg",
+    "trailing_5g_avg",
+    "season_to_date_avg",
+    "prior_season_total_points",
+    "prior_season_games_played",
+    "prior_season_avg_points",
+    *CATEGORICAL_FEATURES,
+]
 
 
 def add_trailing_form_features(player_week: pd.DataFrame) -> pd.DataFrame:
@@ -66,3 +77,29 @@ def add_prior_season_features(player_week: pd.DataFrame) -> pd.DataFrame:
     totals["season"] += 1  # shift forward one year so a join on `season` lines up as "prior"
 
     return player_week.merge(totals, on=["player_id", "season"], how="left")
+
+
+def add_categorical_features(player_week: pd.DataFrame) -> pd.DataFrame:
+    """Casts position/team to pandas `category` dtype for LightGBM's native
+    categorical handling - no one-hot encoding needed.
+
+    A "bye-week flag" was in the original piece-5 plan but is dropped here:
+    every row in this dataset already represents a game the player actually
+    played (byes produce no stat line at all, so they're absent by
+    construction), so a boolean "is bye week" feature could never be True on
+    any real row - it wouldn't add information.
+    """
+    df = player_week.copy()
+    for col in CATEGORICAL_FEATURES:
+        df[col] = df[col].astype("category")
+    return df
+
+
+def build_features(player_week: pd.DataFrame) -> pd.DataFrame:
+    """Runs the full feature pipeline: trailing form, season-to-date,
+    prior-season, and categorical features, in that order."""
+    df = add_trailing_form_features(player_week)
+    df = add_season_to_date_features(df)
+    df = add_prior_season_features(df)
+    df = add_categorical_features(df)
+    return df
