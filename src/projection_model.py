@@ -1,6 +1,9 @@
 """Train/eval scaffolding for the Step 3 fantasy points projection model."""
 
+import lightgbm as lgb
 import pandas as pd
+
+from features import FEATURE_COLUMNS
 
 # Kickers have no real fantasy_points signal yet - WEEKLY_STATS_SCHEMA doesn't
 # carry FG/PAT stats (see schema.py's KICKER_SCORING note), so every K row's
@@ -40,3 +43,24 @@ def baseline_predict(df: pd.DataFrame, position_fallback: dict) -> pd.Series:
     model has to beat."""
     pred = df["trailing_3g_avg"].fillna(df["prior_season_avg_points"])
     return pred.fillna(df["position"].map(position_fallback))
+
+
+def train_lightgbm(
+    train: pd.DataFrame, val: pd.DataFrame, feature_columns: list[str] = FEATURE_COLUMNS
+) -> lgb.LGBMRegressor:
+    """Trains a LightGBM regressor on fantasy_points.
+
+    Early-stops against the validation set (picks the number of trees by
+    validation MAE) rather than a fixed tree count - the held-out test set
+    stays completely untouched until final evaluation.
+    """
+    model = lgb.LGBMRegressor(n_estimators=1000, learning_rate=0.05, random_state=42)
+    model.fit(
+        train[feature_columns],
+        train["fantasy_points"],
+        eval_X=val[feature_columns],
+        eval_y=val["fantasy_points"],
+        eval_metric="mae",
+        callbacks=[lgb.early_stopping(stopping_rounds=50, verbose=False)],
+    )
+    return model
