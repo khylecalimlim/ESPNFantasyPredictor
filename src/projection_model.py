@@ -2,6 +2,7 @@
 
 import lightgbm as lgb
 import pandas as pd
+from sklearn.metrics import mean_absolute_error, root_mean_squared_error
 
 from features import FEATURE_COLUMNS
 
@@ -64,3 +65,20 @@ def train_lightgbm(
         callbacks=[lgb.early_stopping(stopping_rounds=50, verbose=False)],
     )
     return model
+
+
+def evaluate_by_position(actual: pd.Series, predicted: pd.Series, position: pd.Series) -> pd.DataFrame:
+    """MAE/RMSE per position - pooling positions hides how the model does at
+    each one, since QB scores on a very different scale than TE."""
+    rows = []
+    for pos in MODEL_POSITIONS:
+        mask = (position == pos).to_numpy()
+        rows.append(
+            {
+                "position": pos,
+                "n": int(mask.sum()),
+                "mae": mean_absolute_error(actual[mask], predicted[mask]),
+                "rmse": root_mean_squared_error(actual[mask], predicted[mask]),
+            }
+        )
+    return pd.DataFrame(rows).set_index("position")
