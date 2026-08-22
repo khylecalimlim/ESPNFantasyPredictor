@@ -20,10 +20,12 @@ def validate_schema(df: pd.DataFrame, schema: dict, table_name: str) -> pd.DataF
 
 
 def load_players_csv(path: str) -> pd.DataFrame:
+    """Read a players CSV and validate/cast it against PLAYERS_SCHEMA."""
     return validate_schema(pd.read_csv(path), PLAYERS_SCHEMA, "players")
 
 
 def load_weekly_stats_csv(path: str) -> pd.DataFrame:
+    """Read a weekly stats CSV and validate/cast it against WEEKLY_STATS_SCHEMA."""
     return validate_schema(pd.read_csv(path), WEEKLY_STATS_SCHEMA, "weekly_stats")
 
 
